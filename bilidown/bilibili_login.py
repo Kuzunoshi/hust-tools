@@ -59,8 +59,8 @@ def save_cookie_file(session, path=COOKIE_FILE):
 
 
 def _render_qr(qr):
-    """纯 ASCII 渲染二维码（##/空格），兼容 Windows GBK 终端。"""
-    return "\n".join("".join("##" if c else "  " for c in row)
+    """单字符纯 ASCII 渲染二维码（#/空格），兼容 Windows GBK 终端且不折行。"""
+    return "\n".join("".join("#" if c else " " for c in row)
                      for row in qr.get_matrix())
 
 
