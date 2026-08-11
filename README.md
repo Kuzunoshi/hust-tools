@@ -16,6 +16,7 @@
 | 6 | **Png_2_Gif** | 水平精灵图分割为 GIF 动画 | 修改 `Png_2_Gif.py` 中 input.png 路径后运行 |
 | 7 | **Tree_maker** | 生成目录树结构文本 | `python tree_maker.py -d <深度>` |
 | 8 | **Pdf_Tool** | PDF 页面提取/合并/图片转 PDF | `python pdf_tool.py <extract|merge|convert> ...` |
+| 9 | **bilidown** | B 站视频/音频下载 | `python bilidown.py <链接>` |
 
 ---
 
@@ -32,6 +33,7 @@
 - [Png_2_Gif/](./Png_2_Gif/README.md) — PNG 序列帧转 GIF
 - [Tree_maker/](./Tree_maker/README.md) — 目录树生成器
 - [Pdf_Tool/](./Pdf_Tool/README.md) — PDF 页面处理工具（提取/合并/图片转 PDF）
+- [bilidown/](./bilidown/README.md) — 视频下载工具
 
 ---
 
