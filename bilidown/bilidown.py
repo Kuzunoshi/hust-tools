@@ -5,7 +5,8 @@ import os
 import re
 import sys
 
-from bilibili_extra import fetch_cover, fetch_danmaku, is_bilibili_url
+from bilibili_extra import (extract_bvid, fetch_cid, fetch_cover,
+                            fetch_danmaku, is_bilibili_url)
 from downloader import build_opts, download, extract_info, prepare_paths
 
 
@@ -81,8 +82,11 @@ def choose_pages(entries):
     return input("\n选择要下载的分 P（如 1-3,5，回车下载全部）：").strip()
 
 
-def fetch_extras(info, opts, spec, want_cover, want_danmaku, bili):
-    """按选中分 P 下载封面/弹幕，返回成功数量。"""
+def fetch_extras(info, opts, spec, want_cover, want_danmaku, bili, url):
+    """按选中分 P 下载封面/弹幕，返回成功数量。
+
+    yt-dlp 单视频 info 不含 cid 时，通过 B 站 view API 回退获取。
+    """
     entries = info.get("entries") or [info]
     total = len(entries)
     sel = selected_indexes(spec, total)
@@ -90,6 +94,7 @@ def fetch_extras(info, opts, spec, want_cover, want_danmaku, bili):
         paths = prepare_paths(info, opts)
     except Exception:
         paths = [""] * total
+    video_id = extract_bvid(url) if bili else None
     count = 0
     for i, e in enumerate(entries):
         if i not in sel:
@@ -98,9 +103,17 @@ def fetch_extras(info, opts, spec, want_cover, want_danmaku, bili):
         if want_cover and e.get("thumbnail"):
             fetch_cover(e["thumbnail"], stem + ".cover.jpg")
             count += 1
-        if want_danmaku and bili and e.get("cid"):
-            fetch_danmaku(e["cid"], stem + ".danmaku.xml")
-            count += 1
+        if want_danmaku and bili:
+            cid = e.get("cid")
+            if not cid and video_id:
+                try:
+                    cid = fetch_cid(video_id, i)
+                except Exception as ex:
+                    print(f"[警告] 获取弹幕 cid 失败：{ex}")
+                    cid = None
+            if cid:
+                fetch_danmaku(cid, stem + ".danmaku.xml")
+                count += 1
     return count
 
 
@@ -148,7 +161,7 @@ def main(argv=None):
         return 1
 
     if args.cover or args.danmaku:
-        n = fetch_extras(info, opts, spec, args.cover, args.danmaku, bili)
+        n = fetch_extras(info, opts, spec, args.cover, args.danmaku, bili, args.url)
         print(f"[完成] 已下载 {n} 个附件（封面/弹幕）")
     return 0
 

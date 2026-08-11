@@ -42,3 +42,21 @@ def fetch_danmaku(cid, out_path):
 def fetch_cover(image_url, out_path):
     """下载封面图到 out_path。"""
     return _save(image_url, out_path)
+
+
+def fetch_cid(video_id, page_index=0):
+    """通过 B 站 view API 获取指定分 P 的 cid（yt-dlp info 不提供 cid）。
+
+    video_id: 'BVxxxx' 或 'av123'；page_index 为 0 基分 P 索引。
+    """
+    if video_id.startswith("BV"):
+        param = f"bvid={video_id}"
+    else:
+        param = f"aid={video_id[2:]}"
+    resp = requests.get(f"https://api.bilibili.com/x/web-interface/view?{param}",
+                        headers={"User-Agent": _UA}, timeout=15)
+    resp.raise_for_status()
+    pages = resp.json().get("data", {}).get("pages", [])
+    if not pages:
+        raise ValueError("B 站 API 未返回分 P 信息")
+    return pages[page_index]["cid"]

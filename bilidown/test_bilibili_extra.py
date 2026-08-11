@@ -54,6 +54,23 @@ class TestFetch(unittest.TestCase):
             with open(out, "rb") as f:
                 self.assertEqual(f.read(), b"\xff\xd8jpg")
 
+    def test_获取cid(self):
+        with mock.patch("bilibili_extra.requests.get") as get:
+            get.return_value.raise_for_status.return_value = None
+            get.return_value.json.return_value = {"code": 0, "data": {"pages": [
+                {"cid": 111}, {"cid": 222},
+            ]}}
+            self.assertEqual(bilibili_extra.fetch_cid("BV1xx411c7mD"), 111)
+            self.assertEqual(bilibili_extra.fetch_cid("BV1xx411c7mD", 1), 222)
+            self.assertIn("bvid=BV1xx411c7mD", get.call_args.args[0])
+
+    def test_获取cid_支持av号(self):
+        with mock.patch("bilibili_extra.requests.get") as get:
+            get.return_value.raise_for_status.return_value = None
+            get.return_value.json.return_value = {"code": 0, "data": {"pages": [{"cid": 7}]}}
+            self.assertEqual(bilibili_extra.fetch_cid("av170001"), 7)
+            self.assertIn("aid=170001", get.call_args.args[0])
+
 
 if __name__ == "__main__":
     unittest.main()

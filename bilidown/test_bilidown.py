@@ -81,13 +81,30 @@ class TestFetchExtras(unittest.TestCase):
         info = {"id": "BV1", "title": "t", "ext": "mp4",
                 "thumbnail": "https://i0.hdslb.com/c.jpg", "cid": 99}
         opts = {"outtmpl": "dl/%(title)s [%(id)s].%(ext)s"}
-        with mock.patch("bilidown.prepare_paths", return_value=["dl/t [BV1].mp4"]) as pp, \
+        with mock.patch("bilidown.prepare_paths", return_value=["dl/t [BV1].mp4"]), \
              mock.patch("bilidown.fetch_cover") as fc, \
-             mock.patch("bilidown.fetch_danmaku") as fd:
-            n = bilidown.fetch_extras(info, opts, None, True, True, True)
+             mock.patch("bilidown.fetch_danmaku") as fd, \
+             mock.patch("bilidown.fetch_cid") as fcid:
+            n = bilidown.fetch_extras(info, opts, None, True, True, True,
+                                      "https://www.bilibili.com/video/BV1xx")
             self.assertEqual(n, 2)
             fc.assert_called_once_with("https://i0.hdslb.com/c.jpg", "dl/t [BV1].cover.jpg")
             fd.assert_called_once_with(99, "dl/t [BV1].danmaku.xml")
+            fcid.assert_not_called()
+
+    def test_无cid时回退viewAPI(self):
+        info = {"id": "BV1xx411c7mD", "title": "t", "ext": "mp4",
+                "thumbnail": "https://i0.hdslb.com/c.jpg"}
+        opts = {"outtmpl": "dl/%(title)s [%(id)s].%(ext)s"}
+        with mock.patch("bilidown.prepare_paths", return_value=["dl/t [BV1xx411c7mD].mp4"]), \
+             mock.patch("bilidown.fetch_cover"), \
+             mock.patch("bilidown.fetch_danmaku") as fd, \
+             mock.patch("bilidown.fetch_cid", return_value=62131) as fcid:
+            n = bilidown.fetch_extras(info, opts, None, True, True, True,
+                                      "https://www.bilibili.com/video/BV1xx411c7mD")
+            self.assertEqual(n, 2)
+            fcid.assert_called_once_with("BV1xx411c7mD", 0)
+            fd.assert_called_once_with(62131, "dl/t [BV1xx411c7mD].danmaku.xml")
 
     def test_非b站跳过弹幕(self):
         info = {"id": "x", "title": "t", "ext": "mp4",
@@ -96,7 +113,8 @@ class TestFetchExtras(unittest.TestCase):
         with mock.patch("bilidown.prepare_paths", return_value=["dl/t.mp4"]), \
              mock.patch("bilidown.fetch_cover") as fc, \
              mock.patch("bilidown.fetch_danmaku") as fd:
-            n = bilidown.fetch_extras(info, opts, None, True, True, False)
+            n = bilidown.fetch_extras(info, opts, None, True, True, False,
+                                      "https://www.youtube.com/watch?v=x")
             self.assertEqual(n, 1)
             fc.assert_called_once()
             fd.assert_not_called()
