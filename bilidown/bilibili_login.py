@@ -58,8 +58,14 @@ def save_cookie_file(session, path=COOKIE_FILE):
     return path
 
 
-def login_scan():
-    """扫码登录：生成二维码 → 终端显示 → 轮询确认，返回已登录 session。"""
+def _render_qr(qr):
+    """纯 ASCII 渲染二维码（##/空格），兼容 Windows GBK 终端。"""
+    return "\n".join("".join("##" if c else "  " for c in row)
+                     for row in qr.get_matrix())
+
+
+def generate_qr():
+    """生成登录二维码，返回 (session, qrcode_key, 二维码 ASCII 文本)。"""
     s = requests.Session()
     s.headers.update(_HEADERS)
     resp = s.get(GENERATE_URL, timeout=15)
@@ -70,17 +76,21 @@ def login_scan():
     qr = qrcode.QRCode(border=1)
     qr.add_data(qr_url)
     qr.make(fit=True)
-    qr.print_ascii(invert=True)
-    print("请使用 B 站 App 扫描上方二维码登录")
-    deadline = time.time() + 180
+    return s, qrcode_key, _render_qr(qr)
+
+
+def poll_scan(session, qrcode_key, timeout=180):
+    """轮询扫码结果（每 2 秒），成功返回已登录 session；超时/失效抛错。"""
+    deadline = time.time() + timeout
     while time.time() < deadline:
         time.sleep(2)
-        resp = s.get(f"{POLL_URL}?qrcode_key={qrcode_key}&source=main-fe-header", timeout=15)
+        resp = session.get(f"{POLL_URL}?qrcode_key={qrcode_key}&source=main-fe-header",
+                           timeout=15)
         code = resp.json().get("data", {}).get("code")
         if code == 0:
-            if not validate_cookie(s):
+            if not validate_cookie(session):
                 raise RuntimeError("扫码成功但 cookie 验证失败，请重试")
-            return s
+            return session
         if code == 86038:
             raise RuntimeError("二维码已失效，请重新运行 --login")
         if code == 86090:
@@ -89,7 +99,15 @@ def login_scan():
             print("等待扫码…")
         else:
             print(f"扫码状态异常（code={code}），继续等待…")
-    raise RuntimeError("扫码超时（180 秒），请重新运行 --login")
+    raise RuntimeError(f"扫码超时（{timeout} 秒），请重新运行 --login")
+
+
+def login_scan():
+    """扫码登录：生成二维码 → 终端显示 → 轮询确认，返回已登录 session。"""
+    s, qrcode_key, qr_text = generate_qr()
+    print(qr_text)
+    print("请使用 B 站 App 扫描上方二维码登录（180 秒内有效）")
+    return poll_scan(s, qrcode_key)
 
 
 def login_browser(browsers=None):
@@ -148,7 +166,11 @@ def login(mode=None):
                 print(f"扫码登录成功，cookie 保存到 {COOKIE_FILE}")
                 return save_cookie_file(s)
             elif step == "web":
-                if input("扫码不可用，是否打开浏览器登录 B 站？(y/N) ").strip().lower() == "y":
+                try:
+                    confirm = input("扫码不可用，是否打开浏览器登录 B 站？(y/N) ").strip().lower()
+                except EOFError:  # 非交互环境
+                    confirm = "n"
+                if confirm == "y":
                     login_web()
                 return None
         except Exception as e:

@@ -84,7 +84,8 @@ class TestScan(unittest.TestCase):
             ]
             result = bilibili_login.login_scan()
             self.assertIs(result, session)
-            QR.return_value.print_ascii.assert_called_once()
+            QR.return_value.get_matrix.return_value = [[True, False], [False, True]]
+            self.assertIn("##", bilibili_login._render_qr(QR.return_value))
 
     def test_二维码失效抛错(self):
         with mock.patch("bilibili_login.requests.Session") as S, \
