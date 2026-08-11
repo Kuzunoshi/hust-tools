@@ -23,8 +23,14 @@ python bilidown.py <合集链接> --p 1-3,5
 # 附带下载弹幕与封面
 python bilidown.py <视频链接> --danmaku --cover
 
-# 大会员内容（1080P60/4K 等，需登录 cookie）
-python bilidown.py <视频链接> --cookies cookies.txt
+# 登录（自动按序：已存 cookie→浏览器→扫码→打开登录页），登录后下载自动携带
+python bilidown.py --login
+
+# 指定登录方式（可选：file / browser / scan / web）
+python bilidown.py --login scan
+
+# 大会员内容（1080P60/4K），登录后直接下载即可
+python bilidown.py <视频链接> --quality 2160
 ```
 
 ## 参数说明
@@ -33,12 +39,12 @@ python bilidown.py <视频链接> --cookies cookies.txt
 |------|------|
 | `URL` | 视频链接（B 站或其他 yt-dlp 支持网站） |
 | `--audio [mp3\|m4a]` | 只下载音频；缺省取原生 m4a（无需 ffmpeg），指定 mp3 需 ffmpeg 转码 |
-| `--quality N` | 视频清晰度 360/480/720/1080，默认 1080 |
+| `--quality N` | 视频清晰度 360/480/720/1080/1080p60/2160，默认 1080（1080p60/2160 需登录） |
 | `--p SPEC` | 选择分 P（如 `1-3,5`，仅合集/多 P）；不指定时交互式选择 |
 | `--danmaku` | 同时下载弹幕 xml（仅 B 站） |
 | `--cover` | 同时下载封面 |
-| `--cookies FILE` | cookie 文件（大会员内容） |
-| `-o DIR` | 输出目录，默认 `downloads/` |
+| `--cookies FILE` | cookie 文件（手动指定；登录后自动携带，通常无需使用） |
+| `--login [方式]` | 登录 B 站并保存 cookie；方式可选 `file/browser/scan/web`，缺省自动按序尝试 |
 | `--format FMT` | 高级：透传 yt-dlp format 表达式 |
 
 ## 输出文件
@@ -62,13 +68,14 @@ pip install -r requirements.txt   # yt-dlp + requests
 ## 项目结构
 
 ```
-bilidown/
 ├── bilidown.py        # CLI 入口（参数解析 + 多 P 交互选择 + 流程编排）
 ├── downloader.py      # 通用下载引擎（封装 yt-dlp，站点无关）
 ├── bilibili_extra.py  # B 站增强（弹幕/封面/cid 获取，仅 B 站链接启用）
+├── bilibili_login.py  # B 站登录（cookie 检查/浏览器读取/扫码/登录页引导）
 ├── requirements.txt   # 依赖
 ├── test_downloader.py # 引擎单元测试
 ├── test_bilibili_extra.py  # 增强模块单元测试
+├── test_bilibili_login.py  # 登录模块单元测试
 ├── test_bilidown.py   # CLI 单元测试
 └── README.md
 ```
@@ -87,12 +94,19 @@ python bilidown.py "https://www.bilibili.com/video/BV1xx411c7mD" --p 1-3,5
 
 # 视频 + 弹幕 + 封面一套带走
 python bilidown.py "https://www.bilibili.com/video/BV1xx411c7mD" --danmaku --cover
+# 登录后下载 4K 会员清晰度（自动携带已保存 cookie）
+python bilidown.py "https://www.bilibili.com/video/BV1xx411c7mD" --quality 2160
 
 # 非 B 站网站（如 YouTube）直接下载
 python bilidown.py "https://www.youtube.com/watch?v=xxxx"
 ```
 
+## 版本
+
+当前版本：**v1.1.0**
+
 ## 规划
 
-- **v1.0（当前）**：基础下载功能（单视频/多 P/音频/弹幕/封面）
-- **v1.1（规划中）**：会员高清支持（1080P60/4K），含 cookie 获取引导与清晰度选项扩展。`--cookies` 已在 v1.0 预留透传，升级无需改动核心引擎。
+- **v1.0**：基础下载功能（单视频/多 P/音频/弹幕/封面）
+- **v1.1（当前）**：登录引导（`--login` 自动按序：已存 cookie→浏览器→扫码→打开登录页）、cookie 自动携带、会员清晰度（1080p60/2160）
+- **v1.2（待定）**：按需规划
