@@ -17,6 +17,7 @@ build/
 Png_2_Gif/output.gif
 **/converted_*/
 _tmp_*
+**/bilidown/downloads/
 
 # --- OS ---
 Thumbs.db
