@@ -4,6 +4,7 @@
 登录流程按用户操作成本递增：已有 cookie → 浏览器 cookie → 扫码 → 打开登录页。
 """
 import os
+import sys
 import time
 import webbrowser
 
@@ -59,9 +60,25 @@ def save_cookie_file(session, path=COOKIE_FILE):
 
 
 def _render_qr(qr):
-    """单字符纯 ASCII 渲染二维码（#/空格），兼容 Windows GBK 终端且不折行。"""
+    """自适应渲染二维码。
+
+    UTF-8 终端用半块字符（▀▄█）：实心够黑、1 字符=2 行模块，宽高比接近 1:1；
+    GBK 终端回退单字符 ASCII（#/空格）。
+    """
+    matrix = qr.get_matrix()
+    enc = (sys.stdout.encoding or "").lower()
+    if enc in ("utf-8", "utf8"):
+        rows = []
+        for i in range(0, len(matrix), 2):
+            top = matrix[i]
+            bottom = matrix[i + 1] if i + 1 < len(matrix) else [False] * len(matrix)
+            rows.append("".join(
+                "█" if t and b else "▀" if t else "▄" if b else " "
+                for t, b in zip(top, bottom)))
+        return "\n".join(rows)
+    print("[提示] 当前终端编码不支持半块字符，二维码显示可能拉长；建议使用 Windows Terminal")
     return "\n".join("".join("#" if c else " " for c in row)
-                     for row in qr.get_matrix())
+                     for row in matrix)
 
 
 def generate_qr():

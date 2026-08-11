@@ -64,6 +64,26 @@ class TestCookieFile(unittest.TestCase):
         self.assertIsNone(bilibili_login.load_cookie_file("/nonexistent/c.txt"))
 
 
+
+
+class TestRender(unittest.TestCase):
+    def test_utf8终端用半块字符(self):
+        qr = mock.Mock()
+        qr.get_matrix.return_value = [[True, False], [True, True], [False, False]]
+        with mock.patch("sys.stdout", mock.Mock(encoding="utf-8")):
+            out = bilibili_login._render_qr(qr)
+        self.assertEqual(out, "█▄\n  ")
+
+    def test_gbk终端回退ascii(self):
+        qr = mock.Mock()
+        qr.get_matrix.return_value = [[True, True], [False, False]]
+        with mock.patch("sys.stdout", mock.Mock(encoding="gbk")), \
+             mock.patch("bilibili_login.print") as pr:
+            out = bilibili_login._render_qr(qr)
+        self.assertEqual(out, "##\n  ")
+        pr.assert_called_once()
+
+
 class TestScan(unittest.TestCase):
     def test_扫码轮询成功(self):
         with mock.patch("bilibili_login.requests.Session") as S, \
@@ -84,8 +104,6 @@ class TestScan(unittest.TestCase):
             ]
             result = bilibili_login.login_scan()
             self.assertIs(result, session)
-            QR.return_value.get_matrix.return_value = [[True, True], [False, False]]
-            self.assertEqual(bilibili_login._render_qr(QR.return_value), "##\n  ")
 
     def test_二维码失效抛错(self):
         with mock.patch("bilibili_login.requests.Session") as S, \
