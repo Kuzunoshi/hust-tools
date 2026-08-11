@@ -36,6 +36,14 @@ class TestBuildOpts(unittest.TestCase):
         self.assertEqual(opts["cookiefile"], "c.txt")
         self.assertEqual(opts["format"], "best")
 
+    def test_quality_1080p60(self):
+        opts = downloader.build_opts(quality="1080p60")
+        self.assertIn("[height<=1080][fps>=60]", opts["format"])
+
+    def test_quality_4k(self):
+        opts = downloader.build_opts(quality=2160)
+        self.assertIn("[height<=2160]", opts["format"])
+
 
 class TestExtractAndDownload(unittest.TestCase):
     def test_extract_info_调用ytdlp且不下载(self):

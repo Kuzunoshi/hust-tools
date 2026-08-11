@@ -75,6 +75,37 @@ class TestMain(unittest.TestCase):
             bilidown.main(["https://www.bilibili.com/video/BV1xx"])
             cp.assert_called_once()
 
+    def test_login参数_调用登录且不下载(self):
+        with mock.patch("bilidown.run_login", return_value="path") as rl, \
+             mock.patch("bilidown.download") as dl:
+            code = bilidown.main(["--login"])
+            self.assertEqual(code, 0)
+            rl.assert_called_once_with(None)
+            dl.assert_not_called()
+
+    def test_login指定scan方式(self):
+        with mock.patch("bilidown.run_login", return_value="path") as rl:
+            bilidown.main(["--login", "scan"])
+            rl.assert_called_once_with("scan")
+
+    def test_自动携带有效cookie(self):
+        with mock.patch("bilidown.extract_info", return_value={"id": "BV1", "title": "t"}), \
+             mock.patch("bilidown.download", return_value=True) as dl, \
+             mock.patch("bilidown.load_cookie_file", return_value=object()), \
+             mock.patch("bilidown.os.path.exists", return_value=True):
+            bilidown.main(["https://www.bilibili.com/video/BV1xx"])
+            opts = dl.call_args.args[1]
+            self.assertEqual(opts["cookiefile"], bilidown.COOKIE_FILE)
+
+    def test_cookie失效不携带(self):
+        with mock.patch("bilidown.extract_info", return_value={"id": "BV1", "title": "t"}), \
+             mock.patch("bilidown.download", return_value=True) as dl, \
+             mock.patch("bilidown.load_cookie_file", return_value=None), \
+             mock.patch("bilidown.os.path.exists", return_value=True):
+            bilidown.main(["https://www.bilibili.com/video/BV1xx"])
+            opts = dl.call_args.args[1]
+            self.assertNotIn("cookiefile", opts)
+
 
 class TestFetchExtras(unittest.TestCase):
     def test_封面与弹幕命名(self):

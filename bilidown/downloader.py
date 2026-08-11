@@ -6,11 +6,20 @@ from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
 
+def _format_for_quality(quality):
+    """按清晰度档位生成 yt-dlp format 表达式。"""
+    if quality == "1080p60":
+        return "bestvideo[height<=1080][fps>=60]+bestaudio/best[height<=1080][fps>=60]/best"
+    h = int(quality)
+    return f"bestvideo[height<={h}]+bestaudio/best[height<={h}]/best"
+
+
 def build_opts(out_dir="downloads", quality=1080, audio_codec=None,
                cookies=None, format_expr=None, playlist_items=None, multi=False):
     """构造 yt-dlp 选项字典。
 
     audio_codec: None=视频；'m4a'=原生音频（无需 ffmpeg）；'mp3'=ffmpeg 转码。
+    quality: 360/480/720/1080/1080p60/2160（1080p60 与 2160 需登录）。
     """
     if multi:
         outtmpl = os.path.join(out_dir, "%(title)s [%(id)s]_P%(playlist_index)02d.%(ext)s")
@@ -34,7 +43,7 @@ def build_opts(out_dir="downloads", quality=1080, audio_codec=None,
     elif format_expr:
         opts["format"] = format_expr
     else:
-        opts["format"] = f"bestvideo[height<={quality}]+bestaudio/best[height<={quality}]/best"
+        opts["format"] = _format_for_quality(quality)
     if cookies:
         opts["cookiefile"] = cookies
     if playlist_items:

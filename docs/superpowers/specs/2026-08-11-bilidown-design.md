@@ -23,13 +23,24 @@
 - 非 B 站链接降级为通用下载（yt-dlp 原生能力）
 - `--cookies` 透传（基础能力保留，供已有 cookie 的用户使用）
 
-### v1.1（未来阶段，不在本次实现）
+### v1.1（会员高清与登录引导）
 
-- **会员高清支持**：1080P60 / 4K 等会员专属清晰度
-- cookie 获取引导（浏览器 cookie 导出指引 / 扫码登录）
-- 会员清晰度选项扩展（`--quality` 支持 1080P60/4K 等档位）
+**登录流程 `--login`（按用户操作成本递增，默认全自动按序尝试）：**
 
-实现基础功能后，再单独规划 v1.1。v1.0 的架构（yt-dlp 引擎 + cookie 透传）为此预留了无缝升级路径，无需改动核心引擎。
+1. 检查已有 cookie 文件（`~/.bilidown/cookies.txt`）→ 验证有效即结束（0 操作）
+2. 从浏览器读取已登录 cookie（yt-dlp cookiesfrombrowser）→ 验证有效后保存（0 操作）
+3. 扫码登录：终端显示二维码，B 站 App 扫码（1 次扫码）
+4. 打开系统浏览器登录页引导登录（最后回退）
+
+细节约定：
+- `--login [scan|browser|file]` 可指定方式，缺省按上述顺序自动尝试
+- cookie 验证：B 站 nav API（`/x/web-interface/nav`，`isLogin` 为真）
+- cookie 存储：`~/.bilidown/cookies.txt`（Netscape 格式，与 yt-dlp `--cookies` 兼容）
+- 自动携带：下载时自动使用已保存的有效 cookie，无需手动 `--cookies`
+- 清晰度扩展：`--quality` 支持 360/480/720/1080/1080p60/2160（4K/60fps 需登录）
+- 错误提示：会员内容无 cookie 时提示运行 `--login`
+
+实现位置：新增 `bilibili_login.py` 登录模块（独立于下载引擎），CLI 增加 `--login` 与 `--quality` 档位扩展。
 
 ## 3. 架构与模块
 

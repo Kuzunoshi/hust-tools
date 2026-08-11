@@ -1,5 +1,6 @@
 # 创建时间：2026-08-11 09:38:48
 """bilidown CLI 入口：B 站为主的视频/音频下载工具。"""
+__version__ = "1.1.0"
 import argparse
 import os
 import re
@@ -8,6 +9,7 @@ import sys
 from bilibili_extra import (extract_bvid, fetch_cid, fetch_cover,
                             fetch_danmaku, is_bilibili_url)
 from downloader import build_opts, download, extract_info, prepare_paths
+from bilibili_login import COOKIE_FILE, load_cookie_file, login as run_login
 
 
 def parse_args(argv=None):
@@ -15,16 +17,20 @@ def parse_args(argv=None):
     p = argparse.ArgumentParser(
         prog="bilidown",
         description="bilidown：视频/音频下载工具（B 站为主，兼容多站）")
-    p.add_argument("url", help="视频链接（B 站或其他 yt-dlp 支持网站）")
+    p.add_argument("url", nargs="?", help="视频链接（B 站或其他 yt-dlp 支持网站）")
     p.add_argument("--audio", nargs="?", const="m4a", choices=["mp3", "m4a"],
                    metavar="mp3|m4a",
                    help="只下载音频；缺省取原生 m4a（无需 ffmpeg），指定 mp3 需 ffmpeg 转码")
-    p.add_argument("--quality", type=int, choices=[360, 480, 720, 1080], default=1080,
-                   help="视频清晰度（默认 1080）")
+    p.add_argument("--quality", type=str,
+                   choices=["360", "480", "720", "1080", "1080p60", "2160"], default="1080",
+                   help="视频清晰度（默认 1080；1080p60/2160 需登录）")
     p.add_argument("--p", metavar="SPEC", help="选择分 P（如 1-3,5，仅合集/多 P）")
     p.add_argument("--danmaku", action="store_true", help="同时下载弹幕 xml（仅 B 站）")
     p.add_argument("--cover", action="store_true", help="同时下载封面")
     p.add_argument("--cookies", metavar="FILE", help="cookie 文件（大会员内容）")
+    p.add_argument("--login", nargs="?", const="auto",
+                   choices=["auto", "file", "browser", "scan", "web"], metavar="方式",
+                   help="登录 B 站并保存 cookie（默认 auto 自动按序：已存 cookie→浏览器→扫码→打开登录页）")
     p.add_argument("-o", "--out", default="downloads", help="输出目录（默认 downloads）")
     p.add_argument("--format", dest="format_expr", metavar="FMT",
                    help="高级：透传 yt-dlp format 表达式")
@@ -120,8 +126,29 @@ def fetch_extras(info, opts, spec, want_cover, want_danmaku, bili, url):
 def main(argv=None):
     """CLI 入口；返回进程退出码。"""
     args = parse_args(argv)
-    bili = is_bilibili_url(args.url)
+    if args.url is None and args.login is None:
+        print("[错误] 缺少视频链接（或使用 --login 登录）")
+        print("用法：python bilidown.py <URL> [选项]  |  python bilidown.py --login")
+        return 2
+    bili = is_bilibili_url(args.url) if args.url else False
     os.makedirs(args.out, exist_ok=True)
+    if args.login is not None:
+        mode = None if args.login == "auto" else args.login
+        try:
+            path = run_login(mode)
+        except Exception as e:
+            print(f"[错误] 登录失败：{e}")
+            return 1
+        if path:
+            print(f"[完成] 登录成功，cookie 已保存：{path}")
+        return 0
+
+    cookies = args.cookies
+    if not cookies and os.path.exists(COOKIE_FILE):
+        if load_cookie_file():
+            cookies = COOKIE_FILE
+        else:
+            print("[提示] 已保存的 cookie 已失效，可运行 bilidown --login 更新")
 
     try:
         info = extract_info(args.url, {"quiet": True})
@@ -152,7 +179,7 @@ def main(argv=None):
         out_dir=args.out,
         quality=args.quality,
         audio_codec=args.audio,
-        cookies=args.cookies,
+        cookies=cookies,
         format_expr=args.format_expr,
         playlist_items=spec,
         multi=is_multi,
